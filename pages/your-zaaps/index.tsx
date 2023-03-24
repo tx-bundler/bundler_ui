@@ -27,7 +27,7 @@ import { IEthereumProvider } from '@argent/login-react';
 import * as zksync from 'zksync-web3';
 import {
   useAccount,
-  useNetwork,usePrepareContractWrite, useContractWrite,useWaitForTransaction, useContract
+  useNetwork,usePrepareContractWrite, useContractWrite,useWaitForTransaction, useContract, useBalance, useContractRead, useProvider, useSigner
 } from "wagmi";
 import { VaultAbi } from  "../../constants/abis/VaultAbi";
 import { PoolAbi }  from "../../constants/abis//PoolAbi";
@@ -108,7 +108,7 @@ export default function Swap() {
 /___/  |__/|__//_/ |_|/_/    /___/  /_/  /_//_//___//_/|_|   /_/   \____/ /____//_/ |_|/___/  |__,__//_/ \__//_//_/ /___/   /_//_/|_/ \___//___/  |__/|__//_/ |_|/_/    
 */
 
-  const value = ethers.utils.parseEther("0.001");
+  const value = ethers.utils.parseEther("0.0001");
 
   const withdrawMode = 2; // 1 or 2 to withdraw to user's wallet
 
@@ -148,12 +148,33 @@ export default function Swap() {
     },
   })
 
-  const { data: data3, isLoading: isLoading3, isSuccess: isSuccess3, write: write3 } = useContractWrite(config3)
+  const contract = useContract({
+    address: ROUTER_ADDRESS,
+    abi: RouterAbi,
+  })
 
-  function handleSwap(){
+  const provider = useProvider()
+  const { data: signer, isError, isLoading } = useSigner()
+
+  const Router = new ethers.Contract(ROUTER_ADDRESS, RouterAbi, signer);
+  
+  async function handleSwap() {
     console.log("write3 button works?")
     console.log("config 3", config3)
-    write3?.()
+    console.log(contract)
+
+    const response = await Router.swap(
+      paths, // paths
+      0, // amountOutMin // Note: ensures slippage here
+      Math.floor(Date.now() / 1000) + 60 * 10, // deadline // 10 minutes
+      {
+        value: value,
+      }
+    );
+  
+    const tx_receipt = await response.wait();
+  
+    console.log("receipt: ", tx_receipt);
   }
 
 /* 
@@ -215,7 +236,6 @@ export default function Swap() {
                   {isLoading1 && <div>Check Wallet</div>}
                   {isSuccess1 && <div>Transaction: {JSON.stringify(data1)}</div>}
                   {isSuccess2 && <div>Transaction: {JSON.stringify(data2)}</div>}
-                  {isSuccess3 && <div>Transaction: {JSON.stringify(data3)}</div>}
 
                   <SwapModal isOpen={isOpen} onClose={() => setIsOpen(false)} /> 
 
