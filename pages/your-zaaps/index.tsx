@@ -37,9 +37,7 @@ import { testAbi }  from "../../constants/abis/testAbi";
 import { LendingAbi } from "@/constants/abis/LendingAbi";
 
 
-
-
-export default function Swap() {
+export default function Swap({walletAddress}: any) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const { address, isConnected, isDisconnected } = useAccount();
@@ -63,7 +61,7 @@ export default function Swap() {
     "function approve(address spender, uint256 amount) returns (bool)",
   ];
 
-  const value = ethers.utils.parseEther("0.000001");
+  const value = ethers.utils.parseEther("0.0001");
 /* 
    ___   ____   ___   ___   ____  _      __  ____ ______ __ __ ____ ___            _  __   __     __  __ ____ ___   _____
   / _ ) / __ \ / _ \ / _ \ / __ \| | /| / / / __//_  __// // // __// _ \  _    __ (_)/ /_ / /    / / / // __// _ \ / ___/
@@ -81,39 +79,85 @@ export default function Swap() {
 
   const { data: data2, isLoading: isLoading2, isSuccess: isSuccess2, write: write2 } = useContractWrite(config2)
 
-  /* 
-   ____ _      __ ___    ___    ____ ______ __ __ ____ ___    ______ ____    ___   ___    ____          _  __   __     ______  __ _  __ _____ ____ _      __ ___    ___ 
-  / __/| | /| / // _ |  / _ \  / __//_  __// // // __// _ \  /_  __// __ \  / _ \ / _ |  /  _/ _    __ (_)/ /_ / /    / __/\ \/ // |/ // ___// __/| | /| / // _ |  / _ \
- _\ \  | |/ |/ // __ | / ___/ / _/   / /  / _  // _/ / , _/   / /  / /_/ / / // // __ | _/ /  | |/|/ // // __// _ \  _\ \   \  //    // /__ _\ \  | |/ |/ // __ | / ___/
-/___/  |__/|__//_/ |_|/_/    /___/  /_/  /_//_//___//_/|_|   /_/   \____/ /____//_/ |_|/___/  |__,__//_/ \__//_//_/ /___/   /_//_/|_/ \___//___/  |__/|__//_/ |_|/_/    
-  */
 
+/*
+   ___    ___   ___   ___   ____  _   __ ____  _      __ ____ ______ __ __  
+  / _ |  / _ \ / _ \ / _ \ / __ \| | / // __/ | | /| / // __//_  __// // /  
+ / __ | / ___// ___// , _// /_/ /| |/ // _/   | |/ |/ // _/   / /  / _  /   
+/_/ |_|/_/   /_/   /_/|_| \____/ |___//___/   |__/|__//___/  /_/  /_//_/    
+*/
+
+  const MAX_APPROVE = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 
   const { config: config1 } = usePrepareContractWrite({
     address: WETH_ADDRESS,
     abi: ercAbi,
     functionName: 'approve',
-    args: [ROUTER_ADDRESS, value],
+    args: [ROUTER_ADDRESS, MAX_APPROVE],
   })
   const { data: data1, isLoading: isLoading1, isSuccess: isSuccess1, write: write1 } = useContractWrite(config1)
-
-  const handleOpenModal = () => {
-    setIsOpen(true);
-  };
 
   async function handleApprove(){
     write1?.()
   }
 
-  
 
+/* 
+   ____ _      __ ___    ___    ____ ______ __ __ ____ ___    ______ ____    ___   ___    ____          _  __   __     ______  __ _  __ _____ ____ _      __ ___    ___ 
+  / __/| | /| / // _ |  / _ \  / __//_  __// // // __// _ \  /_  __// __ \  / _ \ / _ |  /  _/ _    __ (_)/ /_ / /    / __/\ \/ // |/ // ___// __/| | /| / // _ |  / _ \
+ _\ \  | |/ |/ // __ | / ___/ / _/   / /  / _  // _/ / , _/   / /  / /_/ / / // // __ | _/ /  | |/|/ // // __// _ \  _\ \   \  //    // /__ _\ \  | |/ |/ // __ | / ___/
+/___/  |__/|__//_/ |_|/_/    /___/  /_/  /_//_//___//_/|_|   /_/   \____/ /____//_/ |_|/___/  |__,__//_/ \__//_//_/ /___/   /_//_/|_/ \___//___/  |__/|__//_/ |_|/_/    
+*/
+
+  const withdrawMode = 2; // 1 or 2 to withdraw to user's wallet
+
+  const swapData = ethers.utils.defaultAbiCoder.encode(
+    ["address", "address", "uint8"],
+    [WETH_ADDRESS, "0x079217e9a45A0e4B49C3cb9B6D93b127513D1F07", withdrawMode] // tokenIn, to, withdraw mode
+  );
+  const steps = [
+    {
+      pool: POOL_ADDRESS,
+      data: swapData,
+      callback: ADDRESS_ZERO, // we don't have a callback
+      callbackData: "0x",
+    },
+  ];
+  const nativeETHAddress = ADDRESS_ZERO;
+  const paths = [
+    {
+      steps: steps,
+      tokenIn: nativeETHAddress,
+      amountIn: value,
+    },
+  ];
+
+  const { config: config3 } = usePrepareContractWrite({
+    address: ROUTER_ADDRESS,
+    abi: RouterAbi,
+    functionName: 'swap',
+    args: [
+      paths, // paths
+      0, // amountOutMin // Note: ensures slippage here
+      Math.floor(Date.now() / 1000) + 60 * 10, // deadline // 10 minutes
+      {
+        value: usdcAmount,
+      }
+    ]
+  })
+
+  const { data: data3, isLoading: isLoading3, isSuccess: isSuccess3, write: write3 } = useContractWrite(config3)
+
+
+
+
+  const handleOpenModal = () => {
+    setIsOpen(true);
+  };
 
   return (
     <div>
       <main className={styles.main}>
-      
-      
-
         <Container maxW={"3xl"}>
           <Stack
             as={Box}
@@ -152,12 +196,16 @@ export default function Swap() {
                   <br />
                   <Button disabled={!write1} onClick={handleApprove}> Approve</Button>
                   <Input onChange={e => setUsdcAmount(parseInt(e.target.value, 10))}></Input>
-                  <Button onClick={() => write2()}> BORROW </Button>
+                  <Button onClick={() => write2?.()}> BORROW </Button>
+                  <Button onClick={() => write3?.()}> SWAP </Button>
+
 
         
       {isLoading1 && <div>Check Wallet</div>}
       {isSuccess1 && <div>Transaction: {JSON.stringify(data1)}</div>}
       {isSuccess2 && <div>Transaction: {JSON.stringify(data2)}</div>}
+      {isSuccess3 && <div>Transaction: {JSON.stringify(data3)}</div>}
+
             
                            
                   <SwapModal isOpen={isOpen} onClose={() => setIsOpen(false)} /> 
