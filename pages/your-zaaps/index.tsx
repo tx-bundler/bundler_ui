@@ -62,7 +62,31 @@ export default function Swap() {
     "function deposit() public payable",
     "function approve(address spender, uint256 amount) returns (bool)",
   ];
+
   const value = ethers.utils.parseEther("0.000001");
+/* 
+   ___   ____   ___   ___   ____  _      __  ____ ______ __ __ ____ ___            _  __   __     __  __ ____ ___   _____
+  / _ ) / __ \ / _ \ / _ \ / __ \| | /| / / / __//_  __// // // __// _ \  _    __ (_)/ /_ / /    / / / // __// _ \ / ___/
+ / _  |/ /_/ // , _// , _// /_/ /| |/ |/ / / _/   / /  / _  // _/ / , _/ | |/|/ // // __// _ \  / /_/ /_\ \ / // // /__  
+/____/ \____//_/|_|/_/|_| \____/ |__/|__/ /___/  /_/  /_//_//___//_/|_|  |__,__//_/ \__//_//_/  \____//___//____/ \___/  
+*/
+  const [usdcAmount, setUsdcAmount] = useState(0)
+
+  const {config: config2} = usePrepareContractWrite({
+    address: LENDING_ADDRESS,
+    abi: LendingAbi,
+    functionName: 'borrowEther',
+    args: [usdcAmount]
+  })
+
+  const { data: data2, isLoading: isLoading2, isSuccess: isSuccess2, write: write2 } = useContractWrite(config2)
+
+  /* 
+   ____ _      __ ___    ___    ____ ______ __ __ ____ ___    ______ ____    ___   ___    ____          _  __   __     ______  __ _  __ _____ ____ _      __ ___    ___ 
+  / __/| | /| / // _ |  / _ \  / __//_  __// // // __// _ \  /_  __// __ \  / _ \ / _ |  /  _/ _    __ (_)/ /_ / /    / __/\ \/ // |/ // ___// __/| | /| / // _ |  / _ \
+ _\ \  | |/ |/ // __ | / ___/ / _/   / /  / _  // _/ / , _/   / /  / /_/ / / // // __ | _/ /  | |/|/ // // __// _ \  _\ \   \  //    // /__ _\ \  | |/ |/ // __ | / ___/
+/___/  |__/|__//_/ |_|/_/    /___/  /_/  /_//_//___//_/|_|   /_/   \____/ /____//_/ |_|/___/  |__,__//_/ \__//_//_/ /___/   /_//_/|_/ \___//___/  |__/|__//_/ |_|/_/    
+  */
 
 
   const { config: config1 } = usePrepareContractWrite({
@@ -78,20 +102,10 @@ export default function Swap() {
   };
 
   async function handleApprove(){
-    write?.()
+    write1?.()
   }
 
-  const [usdcAmount, setUsdcAmount] = useState(0)
-
-
-  const {config: config2} = usePrepareContractWrite({
-    address: LENDING_ADDRESS,
-    abi: LendingAbi,
-    functionName: 'borrowEther',
-    args: [usdcAmount]
-  })
-
-  const { data: data2, isLoading: isLoading2, isSuccess: isSuccess2, write: write2 } = useContractWrite(config2)
+  
 
 
   return (
