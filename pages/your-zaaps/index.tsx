@@ -27,7 +27,7 @@ import { IEthereumProvider } from '@argent/login-react';
 import * as zksync from 'zksync-web3';
 import {
   useAccount,
-  useNetwork,usePrepareContractWrite, useContractWrite,useWaitForTransaction
+  useNetwork,usePrepareContractWrite, useContractWrite,useWaitForTransaction, useContract
 } from "wagmi";
 import { VaultAbi } from  "../../constants/abis/VaultAbi";
 import { PoolAbi }  from "../../constants/abis//PoolAbi";
@@ -61,7 +61,6 @@ export default function Swap({walletAddress}: any) {
     "function approve(address spender, uint256 amount) returns (bool)",
   ];
 
-  const value = ethers.utils.parseEther("0.0001");
 /* 
    ___   ____   ___   ___   ____  _      __  ____ ______ __ __ ____ ___            _  __   __     __  __ ____ ___   _____
   / _ ) / __ \ / _ \ / _ \ / __ \| | /| / / / __//_  __// // // __// _ \  _    __ (_)/ /_ / /    / / / // __// _ \ / ___/
@@ -109,6 +108,8 @@ export default function Swap({walletAddress}: any) {
 /___/  |__/|__//_/ |_|/_/    /___/  /_/  /_//_//___//_/|_|   /_/   \____/ /____//_/ |_|/___/  |__,__//_/ \__//_//_/ /___/   /_//_/|_/ \___//___/  |__/|__//_/ |_|/_/    
 */
 
+  const value = ethers.utils.parseEther("0.001");
+
   const withdrawMode = 2; // 1 or 2 to withdraw to user's wallet
 
   const swapData = ethers.utils.defaultAbiCoder.encode(
@@ -140,16 +141,28 @@ export default function Swap({walletAddress}: any) {
       paths, // paths
       0, // amountOutMin // Note: ensures slippage here
       Math.floor(Date.now() / 1000) + 60 * 10, // deadline // 10 minutes
-      {
-        value: value,
-      }
-    ]
+    ],
+    overrides: {
+      from: "0x079217e9a45A0e4B49C3cb9B6D93b127513D1F07", // useAccountAddress
+      value: value
+    },
   })
 
   const { data: data3, isLoading: isLoading3, isSuccess: isSuccess3, write: write3 } = useContractWrite(config3)
 
+  function handleSwap(){
+    console.log("write3 button works?")
+    console.log("config 3", config3)
+    write3?.()
+  }
 
-
+/* 
+  __  __ ____
+ / / / //  _/
+/ /_/ /_/ /  
+\____//___/  
+             
+*/
 
   const handleOpenModal = () => {
     setIsOpen(true);
@@ -197,7 +210,7 @@ export default function Swap({walletAddress}: any) {
                   <Button disabled={!write1} onClick={handleApprove}> Approve</Button>
                   <Input onChange={e => setUsdcAmount(parseInt(e.target.value, 10))}></Input>
                   <Button onClick={() => write2?.()}> BORROW </Button>
-                  <Button onClick={() => write3?.()}> SWAP </Button>
+                  <Button onClick={handleSwap}> SWAP </Button>
 
 
         
