@@ -1,9 +1,6 @@
 import {
   Box,
   Button,
-  Card,
-  CardBody,
-  CardHeader,
   Container,
   Stack,
   Heading,
@@ -11,13 +8,12 @@ import {
   Table,
   Thead,
   Tbody,
-  Tfoot,
   Tr,
   Th,
   Td,
-  TableCaption,
   TableContainer,
   Link,
+  Input,
 } from "@chakra-ui/react";
 import styles from "../../styles/Home.module.css";
 import SwapModal from "../../components/SwapModal";
@@ -31,26 +27,28 @@ import { IEthereumProvider } from '@argent/login-react';
 import * as zksync from 'zksync-web3';
 import {
   useAccount,
-  useNetwork,usePrepareContractWrite, useContractWrite,useWaitForTransaction
+  useNetwork,usePrepareContractWrite, useContractWrite,useWaitForTransaction, useContract, useBalance, useContractRead, useProvider, useSigner
 } from "wagmi";
 import { VaultAbi } from  "../../constants/abis/VaultAbi";
 import { PoolAbi }  from "../../constants/abis//PoolAbi";
 import { RouterAbi }  from "../../constants/abis/RouterAbi";
 import { factoryAbi }  from "../../constants/abis/PoolFactory";
 import { testAbi }  from "../../constants/abis/testAbi";
-
-
+import { LendingAbi } from "@/constants/abis/LendingAbi";
 
 
 export default function Swap() {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const { address, isConnected, isDisconnected } = useAccount();
+
+  const LENDING_ADDRESS = "0xA7c9A38e77290420eD06cf54d27640dE27399eB1";
+
   const WETH_ADDRESS = "0x20b28B1e4665FFf290650586ad76E977EAb90c5D";
   const DAI_ADDRESS = "0x3e7676937A7E96CFB7616f255b9AD9FF47363D4b";
   const DAI_DECIMALS = 18;
-  const POOL_ADDRESS = "0xe52940eDDa6ec5FDabef7C33B9C1E1d613BbA144"; // ETH/DAI
   const VAULT_CONTRACT_ADDRESS = "0x4Ff94F499E1E69D687f3C3cE2CE93E717a0769F8";
+  const POOL_ADDRESS = "0xe52940eDDa6ec5FDabef7C33B9C1E1d613BbA144"; // ETH/DAI
   const ROUTER_ADDRESS = "0xB3b7fCbb8Db37bC6f572634299A58f51622A847e";
   const POOLFACTORY_ADDRESS = "0xf2FD2bc2fBC12842aAb6FbB8b1159a6a83E72006"; // Classic
   const ADDRESS_ZERO = ethers.constants.AddressZero;
@@ -62,32 +60,138 @@ export default function Swap() {
     "function deposit() public payable",
     "function approve(address spender, uint256 amount) returns (bool)",
   ];
-  const value = ethers.utils.parseEther("0.000001");
-  const { config } = usePrepareContractWrite({
+
+/* 
+   ___   ____   ___   ___   ____  _      __  ____ ______ __ __ ____ ___            _  __   __     __  __ ____ ___   _____
+  / _ ) / __ \ / _ \ / _ \ / __ \| | /| / / / __//_  __// // // __// _ \  _    __ (_)/ /_ / /    / / / // __// _ \ / ___/
+ / _  |/ /_/ // , _// , _// /_/ /| |/ |/ / / _/   / /  / _  // _/ / , _/ | |/|/ // // __// _ \  / /_/ /_\ \ / // // /__  
+/____/ \____//_/|_|/_/|_| \____/ |__/|__/ /___/  /_/  /_//_//___//_/|_|  |__,__//_/ \__//_//_/  \____//___//____/ \___/  
+*/
+  const [usdcAmount, setUsdcAmount] = useState(0)
+
+  const {config: config2} = usePrepareContractWrite({
+    address: LENDING_ADDRESS,
+    abi: LendingAbi,
+    functionName: 'borrowEther',
+    args: [usdcAmount]
+  })
+
+  const { data: data2, isLoading: isLoading2, isSuccess: isSuccess2, write: write2 } = useContractWrite(config2)
+
+
+/*
+   ___    ___   ___   ___   ____  _   __ ____  _      __ ____ ______ __ __  
+  / _ |  / _ \ / _ \ / _ \ / __ \| | / // __/ | | /| / // __//_  __// // /  
+ / __ | / ___// ___// , _// /_/ /| |/ // _/   | |/ |/ // _/   / /  / _  /   
+/_/ |_|/_/   /_/   /_/|_| \____/ |___//___/   |__/|__//___/  /_/  /_//_/    
+*/
+
+  const MAX_APPROVE = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+
+  const { config: config1 } = usePrepareContractWrite({
     address: WETH_ADDRESS,
     abi: ercAbi,
     functionName: 'approve',
-    args: [ROUTER_ADDRESS, value],
+    args: [ROUTER_ADDRESS, MAX_APPROVE],
   })
-  const { data, isLoading, isSuccess, write } = useContractWrite(config)
+  const { data: data1, isLoading: isLoading1, isSuccess: isSuccess1, write: write1 } = useContractWrite(config1)
 
+  async function handleApprove(){
+    write1?.()
+  }
+
+
+/* 
+   ____ _      __ ___    ___    ____ ______ __ __ ____ ___    ______ ____    ___   ___    ____          _  __   __     ______  __ _  __ _____ ____ _      __ ___    ___ 
+  / __/| | /| / // _ |  / _ \  / __//_  __// // // __// _ \  /_  __// __ \  / _ \ / _ |  /  _/ _    __ (_)/ /_ / /    / __/\ \/ // |/ // ___// __/| | /| / // _ |  / _ \
+ _\ \  | |/ |/ // __ | / ___/ / _/   / /  / _  // _/ / , _/   / /  / /_/ / / // // __ | _/ /  | |/|/ // // __// _ \  _\ \   \  //    // /__ _\ \  | |/ |/ // __ | / ___/
+/___/  |__/|__//_/ |_|/_/    /___/  /_/  /_//_//___//_/|_|   /_/   \____/ /____//_/ |_|/___/  |__,__//_/ \__//_//_/ /___/   /_//_/|_/ \___//___/  |__/|__//_/ |_|/_/    
+*/
+
+  const value = ethers.utils.parseEther("0.0001");
+
+  const withdrawMode = 2; // 1 or 2 to withdraw to user's wallet
+
+  const swapData = ethers.utils.defaultAbiCoder.encode(
+    ["address", "address", "uint8"],
+    [WETH_ADDRESS, "0x079217e9a45A0e4B49C3cb9B6D93b127513D1F07", withdrawMode] // tokenIn, to, withdraw mode
+  );
+  const steps = [
+    {
+      pool: POOL_ADDRESS,
+      data: swapData,
+      callback: ADDRESS_ZERO, // we don't have a callback
+      callbackData: "0x",
+    },
+  ];
+  const nativeETHAddress = ADDRESS_ZERO;
+  const paths = [
+    {
+      steps: steps,
+      tokenIn: nativeETHAddress,
+      amountIn: value,
+    },
+  ];
+
+  const { config: config3 } = usePrepareContractWrite({
+    address: ROUTER_ADDRESS,
+    abi: RouterAbi,
+    functionName: 'swap',
+    args: [
+      paths, // paths
+      0, // amountOutMin // Note: ensures slippage here
+      Math.floor(Date.now() / 1000) + 60 * 10, // deadline // 10 minutes
+    ],
+    overrides: {
+      from: "0x079217e9a45A0e4B49C3cb9B6D93b127513D1F07", // useAccountAddress
+      value: value
+    },
+  })
+
+  const contract = useContract({
+    address: ROUTER_ADDRESS,
+    abi: RouterAbi,
+  })
+
+  const provider = useProvider()
+  const { data: signer, isError, isLoading } = useSigner()
+
+  const Router = new ethers.Contract(ROUTER_ADDRESS, RouterAbi, signer);
   
+  async function handleSwap() {
+    console.log("write3 button works?")
+    console.log("config 3", config3)
+    console.log(contract)
+
+    const response = await Router.swap(
+      paths, // paths
+      0, // amountOutMin // Note: ensures slippage here
+      Math.floor(Date.now() / 1000) + 60 * 10, // deadline // 10 minutes
+      {
+        value: value,
+      }
+    );
   
+    const tx_receipt = await response.wait();
+  
+    console.log("receipt: ", tx_receipt);
+  }
+
+/* 
+  __  __ ____
+ / / / //  _/
+/ /_/ /_/ /  
+\____//___/  
+             
+*/
 
   const handleOpenModal = () => {
     setIsOpen(true);
   };
 
-async function handleClick(){
-  write?.()
-}
-
   return (
     <div>
       <main className={styles.main}>
-      
-      
-
         <Container maxW={"3xl"}>
           <Stack
             as={Box}
@@ -120,15 +224,19 @@ async function handleClick(){
                   
                   USDC --&#62; ETH --&#62; WETH --&#62; DAI (One Click)
 
+                  USDC --&#62; ETH --&#62; WETH --&#62; APPROVE --&#62; DAI
+
                   <br />
                   <br />
-                  <Button disabled={!write} onClick={handleClick}>
-        Approve
-      </Button>
-      {isLoading && <div>Check Wallet</div>}
-      {isSuccess && <div>Transaction: {JSON.stringify(data)}</div>}
-            
-                           
+                  <Button disabled={!write1} onClick={handleApprove}> Approve</Button>
+                  <Input onChange={e => setUsdcAmount(parseInt(e.target.value, 10))}></Input>
+                  <Button onClick={() => write2?.()}> BORROW </Button>
+                  <Button onClick={handleSwap}> SWAP </Button>
+
+                  {isLoading1 && <div>Check Wallet</div>}
+                  {isSuccess1 && <div>Transaction: {JSON.stringify(data1)}</div>}
+                  {isSuccess2 && <div>Transaction: {JSON.stringify(data2)}</div>}
+
                   <SwapModal isOpen={isOpen} onClose={() => setIsOpen(false)} /> 
 
                 </Text>
