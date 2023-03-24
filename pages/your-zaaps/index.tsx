@@ -141,7 +141,7 @@ export default function Swap({walletAddress}: any) {
       0, // amountOutMin // Note: ensures slippage here
       Math.floor(Date.now() / 1000) + 60 * 10, // deadline // 10 minutes
       {
-        value: usdcAmount,
+        value: value,
       }
     ]
   })
