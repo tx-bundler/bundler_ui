@@ -1,9 +1,6 @@
 import {
   Box,
   Button,
-  Card,
-  CardBody,
-  CardHeader,
   Container,
   Stack,
   Heading,
@@ -11,13 +8,12 @@ import {
   Table,
   Thead,
   Tbody,
-  Tfoot,
   Tr,
   Th,
   Td,
-  TableCaption,
   TableContainer,
   Link,
+  Input,
 } from "@chakra-ui/react";
 import styles from "../../styles/Home.module.css";
 import SwapModal from "../../components/SwapModal";
@@ -38,6 +34,7 @@ import { PoolAbi }  from "../../constants/abis//PoolAbi";
 import { RouterAbi }  from "../../constants/abis/RouterAbi";
 import { factoryAbi }  from "../../constants/abis/PoolFactory";
 import { testAbi }  from "../../constants/abis/testAbi";
+import { LendingAbi } from "@/constants/abis/LendingAbi";
 
 
 
@@ -46,6 +43,9 @@ export default function Swap() {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const { address, isConnected, isDisconnected } = useAccount();
+
+  const LENDING_ADDRESS = "0xA7c9A38e77290420eD06cf54d27640dE27399eB1";
+
   const WETH_ADDRESS = "0x20b28B1e4665FFf290650586ad76E977EAb90c5D";
   const DAI_ADDRESS = "0x3e7676937A7E96CFB7616f255b9AD9FF47363D4b";
   const DAI_DECIMALS = 18;
@@ -63,24 +63,36 @@ export default function Swap() {
     "function approve(address spender, uint256 amount) returns (bool)",
   ];
   const value = ethers.utils.parseEther("0.000001");
-  const { config } = usePrepareContractWrite({
+
+
+  const { config: config1 } = usePrepareContractWrite({
     address: WETH_ADDRESS,
     abi: ercAbi,
     functionName: 'approve',
     args: [ROUTER_ADDRESS, value],
   })
-  const { data, isLoading, isSuccess, write } = useContractWrite(config)
-
-  
-  
+  const { data: data1, isLoading: isLoading1, isSuccess: isSuccess1, write: write1 } = useContractWrite(config1)
 
   const handleOpenModal = () => {
     setIsOpen(true);
   };
 
-async function handleClick(){
-  write?.()
-}
+  async function handleApprove(){
+    write?.()
+  }
+
+  const [usdcAmount, setUsdcAmount] = useState(0)
+
+
+  const {config: config2} = usePrepareContractWrite({
+    address: LENDING_ADDRESS,
+    abi: LendingAbi,
+    functionName: 'borrowEther',
+    args: [usdcAmount]
+  })
+
+  const { data: data2, isLoading: isLoading2, isSuccess: isSuccess2, write: write2 } = useContractWrite(config2)
+
 
   return (
     <div>
@@ -120,13 +132,18 @@ async function handleClick(){
                   
                   USDC --&#62; ETH --&#62; WETH --&#62; DAI (One Click)
 
+                  USDC --&#62; ETH --&#62; WETH --&#62; APPROVE --&#62; DAI
+
                   <br />
                   <br />
-                  <Button disabled={!write} onClick={handleClick}>
-        Approve
-      </Button>
-      {isLoading && <div>Check Wallet</div>}
-      {isSuccess && <div>Transaction: {JSON.stringify(data)}</div>}
+                  <Button disabled={!write1} onClick={handleApprove}> Approve</Button>
+                  <Input onChange={e => setUsdcAmount(parseInt(e.target.value, 10))}></Input>
+                  <Button onClick={() => write2()}> BORROW </Button>
+
+        
+      {isLoading1 && <div>Check Wallet</div>}
+      {isSuccess1 && <div>Transaction: {JSON.stringify(data1)}</div>}
+      {isSuccess2 && <div>Transaction: {JSON.stringify(data2)}</div>}
             
                            
                   <SwapModal isOpen={isOpen} onClose={() => setIsOpen(false)} /> 
