@@ -35,6 +35,8 @@ import { RouterAbi }  from "../../constants/abis/RouterAbi";
 import { factoryAbi }  from "../../constants/abis/PoolFactory";
 import { testAbi }  from "../../constants/abis/testAbi";
 import { LendingAbi } from "@/constants/abis/LendingAbi";
+import { AAFactoryAbi } from "@/constants/abis/AAFactoryAbi";
+import { utils } from "zksync-web3";
 
 
 export default function Swap() {
@@ -176,6 +178,42 @@ export default function Swap() {
   
     console.log("receipt: ", tx_receipt);
   }
+
+
+/* 
+   ___   ____ ___   __   ____ __  __      ___   _____ _____ ____   __  __ _  __ ______       ___    ___          ____ ___   _____ ______ ____   ___ __  __
+  / _ \ / __// _ \ / /  / __ \\ \/ /     / _ | / ___// ___// __ \ / / / // |/ //_  __/      / _ |  / _ |        / __// _ | / ___//_  __// __ \ / _ \\ \/ /
+ / // // _/ / ___// /__/ /_/ / \  /     / __ |/ /__ / /__ / /_/ // /_/ //    /  / /        / __ | / __ |       / _/ / __ |/ /__   / /  / /_/ // , _/ \  / 
+/____//___//_/   /____/\____/  /_/     /_/ |_|\___/ \___/ \____/ \____//_/|_/  /_/        /_/ |_|/_/ |_|      /_/  /_/ |_|\___/  /_/   \____//_/|_|  /_/  
+*/
+
+const AA_FACTORY_ADDRESS = "0x97550385F79B32F377a64230927b8516254F009C";
+const AA_ABI = AAFactoryAbi
+
+async function handleDeployAA () {
+  const aaFactory = new ethers.Contract(AA_FACTORY_ADDRESS, AA_ABI, signer);
+
+  const owner = signer?.getAddress();
+  console.log("Account owner pk: ", owner);
+
+  // For the simplicity of the tutorial, we will use zero hash as salt
+  const salt = ethers.constants.HashZero;
+
+  const tx = await aaFactory.deployAccount(salt, owner);
+  await tx.wait();
+
+  const abiCoder = new ethers.utils.AbiCoder();
+  const accountAddress = utils.create2Address(AA_FACTORY_ADDRESS, await aaFactory.aaBytecodeHash(), salt, abiCoder.encode(["address"], [owner]));
+
+  console.log(`Account deployed on address ${accountAddress}`);
+
+  await (
+    await signer.sendTransaction({
+      to: accountAddress,
+      value: ethers.utils.parseEther("0.02"),
+    })
+  ).wait();
+}
 
 /* 
    __  ___ __  __ __  ______ ____ _____ ___    __    __ 
