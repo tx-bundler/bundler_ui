@@ -36,7 +36,8 @@ import { factoryAbi }  from "../../constants/abis/PoolFactory";
 import { testAbi }  from "../../constants/abis/testAbi";
 import { LendingAbi } from "@/constants/abis/LendingAbi";
 import { AAFactoryAbi } from "@/constants/abis/AAFactoryAbi";
-import { utils } from "zksync-web3";
+import { utils, Wallet } from "zksync-web3";
+import { sign } from "crypto";
 
 
 export default function Swap() {
@@ -194,17 +195,18 @@ let aa_address: string;
 
 async function handleDeployAA () {
   const aaFactory = new ethers.Contract(AA_FACTORY_ADDRESS, AA_ABI, signer);
+  console.log(aaFactory)
 
   const owner = signer?.getAddress();
   console.log("Account owner pk: ", owner);
 
   // For the simplicity of the tutorial, we will use zero hash as salt
-  const salt = ethers.constants.HashZero;
+  const salt = ethers.constants.HashZero
 
   console.log("Befor deploy AA")
   const tx = await aaFactory.deployAccount(salt, owner);
   await tx.wait();
-  console.log("After deploy AA")
+  console.log("After deploy AA", tx)
 
   const abiCoder = new ethers.utils.AbiCoder();
   const accountAddress = utils.create2Address(AA_FACTORY_ADDRESS, await aaFactory.aaBytecodeHash(), salt, abiCoder.encode(["address"], [owner]));
