@@ -108,7 +108,7 @@ export default function Swap() {
 /___/  |__/|__//_/ |_|/_/    /___/  /_/  /_//_//___//_/|_|   /_/   \____/ /____//_/ |_|/___/  |__,__//_/ \__//_//_/ /___/   /_//_/|_/ \___//___/  |__/|__//_/ |_|/_/    
 */
 
-  const value = ethers.utils.parseEther("0.001");
+  const value = ethers.utils.parseEther("0.00001");
 
   const withdrawMode = 2; // 1 or 2 to withdraw to user's wallet
 
@@ -228,8 +228,10 @@ async function handleMulticall() {
 
   DAI_BALANCE = await DAI.balanceOf(signer?.getAddress())
   console.log("DAI Balance AFTER of the user: ", DAI_BALANCE)
-}
 
+  const interfaceId = multicallInterface.getSighash("multicall");
+  console.log(interfaceId)
+}
 
 
 
