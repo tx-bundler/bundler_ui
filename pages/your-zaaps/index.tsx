@@ -108,7 +108,7 @@ export default function Swap() {
 /___/  |__/|__//_/ |_|/_/    /___/  /_/  /_//_//___//_/|_|   /_/   \____/ /____//_/ |_|/___/  |__,__//_/ \__//_//_/ /___/   /_//_/|_/ \___//___/  |__/|__//_/ |_|/_/    
 */
 
-  const value = ethers.utils.parseEther("0.0001");
+  const value = ethers.utils.parseEther("0.000001");
 
   const withdrawMode = 2; // 1 or 2 to withdraw to user's wallet
 
@@ -176,6 +176,16 @@ export default function Swap() {
   
     console.log("receipt: ", tx_receipt);
   }
+
+/* 
+ ______ _  __  ___   __  __ _  __ ___   __    ____ ___ 
+/_  __/| |/_/ / _ ) / / / // |/ // _ \ / /   / __// _ \
+ / /  _>  <  / _  |/ /_/ //    // // // /__ / _/ / , _/
+/_/  /_/|_| /____/ \____//_/|_//____//____//___//_/|_| 
+*/  
+
+
+
 
 /* 
   __  __ ____
