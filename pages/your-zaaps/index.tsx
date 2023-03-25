@@ -190,6 +190,8 @@ export default function Swap() {
 const AA_FACTORY_ADDRESS = "0x97550385F79B32F377a64230927b8516254F009C";
 const AA_ABI = AAFactoryAbi
 
+let aa_address: string;
+
 async function handleDeployAA () {
   const aaFactory = new ethers.Contract(AA_FACTORY_ADDRESS, AA_ABI, signer);
 
@@ -199,11 +201,14 @@ async function handleDeployAA () {
   // For the simplicity of the tutorial, we will use zero hash as salt
   const salt = ethers.constants.HashZero;
 
+  console.log("Befor deploy AA")
   const tx = await aaFactory.deployAccount(salt, owner);
   await tx.wait();
+  console.log("After deploy AA")
 
   const abiCoder = new ethers.utils.AbiCoder();
   const accountAddress = utils.create2Address(AA_FACTORY_ADDRESS, await aaFactory.aaBytecodeHash(), salt, abiCoder.encode(["address"], [owner]));
+  aa_address = accountAddress
 
   console.log(`Account deployed on address ${accountAddress}`);
 
@@ -235,8 +240,7 @@ const WETH = new ethers.Contract(WETH_ADDRESS, ercAbi, signer);
 const DAI = new ethers.Contract(DAI_ADDRESS, ercAbi, signer);
 
 async function handleMulticall() {
-  const accountAddress = await signer.getAddress();
-  const account = new ethers.Contract(accountAddress, multicallInterface, signer);
+  const account = new ethers.Contract(aa_address, multicallInterface, signer);
 
   let DAI_BALANCE = DAI.balanceOf(signer?.getAddress())
   console.log("DAI Balance BEFORE of the user: ", DAI_BALANCE)
@@ -328,7 +332,11 @@ async function handleMulticall() {
                   <Input onChange={e => setUsdcAmount(parseInt(e.target.value, 10))}></Input>
                   <Button onClick={() => write2?.()}> BORROW </Button>
                   <Button onClick={handleSwap}> SWAP </Button>
+                  <br />
+                  <Button onClick={handleDeployAA}> DEPLOY YOUR ABSTRACT ACCOUNT!</Button>
+                  <br />
                   <Button onClick={handleMulticall}> MULTICALL FUCK YEAH! </Button>
+                  <br />
 
                   {isLoading1 && <div>Check Wallet</div>}
                   {isSuccess1 && <div>Transaction: {JSON.stringify(data1)}</div>}
