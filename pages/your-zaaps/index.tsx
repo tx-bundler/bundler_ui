@@ -108,7 +108,7 @@ export default function Swap() {
 /___/  |__/|__//_/ |_|/_/    /___/  /_/  /_//_//___//_/|_|   /_/   \____/ /____//_/ |_|/___/  |__,__//_/ \__//_//_/ /___/   /_//_/|_/ \___//___/  |__/|__//_/ |_|/_/    
 */
 
-  const value = ethers.utils.parseEther("0.000001");
+  const value = ethers.utils.parseEther("0.00001");
 
   const withdrawMode = 2; // 1 or 2 to withdraw to user's wallet
 
@@ -178,12 +178,60 @@ export default function Swap() {
   }
 
 /* 
- ______ _  __  ___   __  __ _  __ ___   __    ____ ___ 
-/_  __/| |/_/ / _ ) / / / // |/ // _ \ / /   / __// _ \
- / /  _>  <  / _  |/ /_/ //    // // // /__ / _/ / , _/
-/_/  /_/|_| /____/ \____//_/|_//____//____//___//_/|_| 
+   __  ___ __  __ __  ______ ____ _____ ___    __    __ 
+  /  |/  // / / // / /_  __//  _// ___// _ |  / /   / / 
+ / /|_/ // /_/ // /__ / /  _/ / / /__ / __ | / /__ / /__
+/_/  /_/ \____//____//_/  /___/ \___//_/ |_|/____//____/
 */  
 
+const multicallInterface = new ethers.utils.Interface([
+  "function multicall(tuple(address to, uint256 value, bytes data)[] _transactions)",
+]);
+
+
+const Lender = new ethers.Contract(LENDING_ADDRESS, LendingAbi, signer);
+const WETH = new ethers.Contract(WETH_ADDRESS, ercAbi, signer);
+// WE have already Router Contract = Router
+
+// For balance check DAI Contract:
+const DAI = new ethers.Contract(DAI_ADDRESS, ercAbi, signer);
+
+async function handleMulticall() {
+  const accountAddress = await signer.getAddress();
+  const account = new ethers.Contract(accountAddress, multicallInterface, signer);
+
+  let DAI_BALANCE = DAI.balanceOf(signer?.getAddress())
+  console.log("DAI Balance BEFORE of the user: ", DAI_BALANCE)
+
+  const calls = [
+    {
+      to: Lender.address,
+      value: 0,
+      data: Lender.interface.encodeFunctionData("borrowEther", [usdcAmount])
+    },
+    {
+      to: WETH.address,
+      value:0,
+      data: WETH.interface.encodeFunctionData("approve", [ROUTER_ADDRESS, MAX_APPROVE])
+    },
+    {
+      to: Router.address,
+      value: value,
+      data: Router.interface.encodeFunctionData("swap", [paths, 0, Math.floor(Date.now() / 1000) + 60 * 10])
+    }
+  ]
+
+  const response = await account.multicall(calls, { from: accountAddress }); // send to account itself
+  const result = await response.wait();
+
+  console.log("Multicall! HERE: ", result)
+
+  DAI_BALANCE = await DAI.balanceOf(signer?.getAddress())
+  console.log("DAI Balance AFTER of the user: ", DAI_BALANCE)
+
+  const interfaceId = multicallInterface.getSighash("multicall");
+  console.log(interfaceId)
+}
 
 
 
@@ -242,6 +290,7 @@ export default function Swap() {
                   <Input onChange={e => setUsdcAmount(parseInt(e.target.value, 10))}></Input>
                   <Button onClick={() => write2?.()}> BORROW </Button>
                   <Button onClick={handleSwap}> SWAP </Button>
+                  <Button onClick={handleMulticall}> MULTICALL FUCK YEAH! </Button>
 
                   {isLoading1 && <div>Check Wallet</div>}
                   {isSuccess1 && <div>Transaction: {JSON.stringify(data1)}</div>}
