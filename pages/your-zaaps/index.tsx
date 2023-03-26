@@ -36,6 +36,7 @@ import { factoryAbi }  from "../../constants/abis/PoolFactory";
 import { testAbi }  from "../../constants/abis/testAbi";
 import { LendingAbi } from "@/constants/abis/LendingAbi";
 import { AAFactoryAbi } from "@/constants/abis/AAFactoryAbi";
+import { AccountAbi } from "@/constants/abis/AccountAbi";
 import { utils, Wallet } from "zksync-web3";
 import { sign } from "crypto";
 
@@ -249,7 +250,17 @@ const WETH = new ethers.Contract(WETH_ADDRESS, ercAbi, signer);
 const DAI = new ethers.Contract(DAI_ADDRESS, ercAbi, signer);
 
 async function handleMulticall() {
-  const account = new ethers.Contract(aa_address, multicallInterface, aa_address);
+  const aaFactory = new ethers.Contract(AA_FACTORY_ADDRESS, AA_ABI, signer);
+  const owner = await signer?.getAddress();
+  const salt = ethers.constants.HashZero
+
+  console.log("OWNER", owner)
+
+  const abiCoder = new ethers.utils.AbiCoder();
+  const accountAddress = utils.create2Address(salt, await aaFactory.aaBytecodeHash(), abiCoder.encode(["address"], [owner]), AA_FACTORY_ADDRESS);
+  aa_address = accountAddress
+  console.log(aa_address, "and" ,signer)
+  const account = new ethers.Contract(aa_address, AccountAbi, signer);
 
   let DAI_BALANCE = DAI.balanceOf(signer?.getAddress())
   console.log("DAI Balance BEFORE of the user: ", DAI_BALANCE)
@@ -272,7 +283,7 @@ async function handleMulticall() {
     }
   ]
 
-  const response = await account.multicall(calls, { from: aa_address }); // send to account itself
+  const response = await account.multicall(calls, {from: owner}); // send to account itself
   const result = await response.wait();
 
   console.log("Multicall! HERE: ", result)
