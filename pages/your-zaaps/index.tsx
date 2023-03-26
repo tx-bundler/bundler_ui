@@ -111,7 +111,7 @@ export default function Swap() {
 /___/  |__/|__//_/ |_|/_/    /___/  /_/  /_//_//___//_/|_|   /_/   \____/ /____//_/ |_|/___/  |__,__//_/ \__//_//_/ /___/   /_//_/|_/ \___//___/  |__/|__//_/ |_|/_/    
 */
 
-  const value = ethers.utils.parseEther("0.00001");
+  const value = ethers.utils.parseEther("0.0001");
 
   const withdrawMode = 2; // 1 or 2 to withdraw to user's wallet
 
@@ -188,7 +188,7 @@ export default function Swap() {
 /____//___//_/   /____/\____/  /_/     /_/ |_|\___/ \___/ \____/ \____//_/|_/  /_/        /_/ |_|/_/ |_|      /_/  /_/ |_|\___/  /_/   \____//_/|_|  /_/  
 */
 
-const AA_FACTORY_ADDRESS = "0x97550385F79B32F377a64230927b8516254F009C";
+const AA_FACTORY_ADDRESS = "0x7F6716F5dd12508692BCc5f27bC917995389EE1c";
 const AA_ABI = AAFactoryAbi
 
 let aa_address: string;
@@ -207,21 +207,28 @@ async function handleDeployAA () {
   const tx = await aaFactory.deployAccount(salt, owner);
   await tx.wait();
   console.log("After deploy AA", tx)
+}
+
+
+async function sendETHtoAA() {
+  const aaFactory = new ethers.Contract(AA_FACTORY_ADDRESS, AA_ABI, signer);
+  const owner = await signer?.getAddress();
+  const salt = ethers.constants.HashZero
+
+  console.log("OWNER", owner)
 
   const abiCoder = new ethers.utils.AbiCoder();
-  const accountAddress = utils.create2Address(AA_FACTORY_ADDRESS, await aaFactory.aaBytecodeHash(), salt, abiCoder.encode(["address"], [owner]));
+  const accountAddress = utils.create2Address(salt, await aaFactory.aaBytecodeHash(), abiCoder.encode(["address"], [owner]), AA_FACTORY_ADDRESS);
   aa_address = accountAddress
 
   console.log(`Account deployed on address ${accountAddress}`);
-
-  await (
-    await signer.sendTransaction({
-      to: accountAddress,
-      value: ethers.utils.parseEther("0.02"),
-    })
-  ).wait();
+    await (
+      await signer.sendTransaction({
+        to: accountAddress,
+        value: ethers.utils.parseEther("0.02"),
+      })
+    ).wait();
 }
-
 /* 
    __  ___ __  __ __  ______ ____ _____ ___    __    __ 
   /  |/  // / / // / /_  __//  _// ___// _ |  / /   / / 
@@ -242,7 +249,7 @@ const WETH = new ethers.Contract(WETH_ADDRESS, ercAbi, signer);
 const DAI = new ethers.Contract(DAI_ADDRESS, ercAbi, signer);
 
 async function handleMulticall() {
-  const account = new ethers.Contract(aa_address, multicallInterface, signer);
+  const account = new ethers.Contract(aa_address, multicallInterface, aa_address);
 
   let DAI_BALANCE = DAI.balanceOf(signer?.getAddress())
   console.log("DAI Balance BEFORE of the user: ", DAI_BALANCE)
@@ -265,7 +272,7 @@ async function handleMulticall() {
     }
   ]
 
-  const response = await account.multicall(calls, { from: accountAddress }); // send to account itself
+  const response = await account.multicall(calls, { from: aa_address }); // send to account itself
   const result = await response.wait();
 
   console.log("Multicall! HERE: ", result)
@@ -339,6 +346,7 @@ async function handleMulticall() {
                   <br />
                   <Button onClick={handleMulticall}> MULTICALL FUCK YEAH! </Button>
                   <br />
+                  <Button onClick={sendETHtoAA}>Send ETH Your Account</Button>
 
                   {isLoading1 && <div>Check Wallet</div>}
                   {isSuccess1 && <div>Transaction: {JSON.stringify(data1)}</div>}
