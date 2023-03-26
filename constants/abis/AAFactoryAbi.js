@@ -1,52 +1,52 @@
 const AAFactoryAbi = [
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: "bytes32",
-        name: "_aaBytecodeHash",
-        type: "bytes32",
-      },
+        "internalType": "bytes32",
+        "name": "_aaBytecodeHash",
+        "type": "bytes32"
+      }
     ],
-    stateMutability: "nonpayable",
-    type: "constructor",
+    "stateMutability": "nonpayable",
+    "type": "constructor"
   },
   {
-    inputs: [],
-    name: "aaBytecodeHash",
-    outputs: [
+    "inputs": [],
+    "name": "aaBytecodeHash",
+    "outputs": [
       {
-        internalType: "bytes32",
-        name: "",
-        type: "bytes32",
-      },
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
     ],
-    stateMutability: "view",
-    type: "function",
+    "stateMutability": "view",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: "bytes32",
-        name: "salt",
-        type: "bytes32",
+        "internalType": "bytes32",
+        "name": "salt",
+        "type": "bytes32"
       },
       {
-        internalType: "address",
-        name: "owner",
-        type: "address",
-      },
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      }
     ],
-    name: "deployAccount",
-    outputs: [
+    "name": "deployAccount",
+    "outputs": [
       {
-        internalType: "address",
-        name: "accountAddress",
-        type: "address",
-      },
+        "internalType": "address",
+        "name": "accountAddress",
+        "type": "address"
+      }
     ],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
 ];
 
 module.exports = { AAFactoryAbi };

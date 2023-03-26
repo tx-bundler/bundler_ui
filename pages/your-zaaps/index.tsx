@@ -37,7 +37,7 @@ import { testAbi }  from "../../constants/abis/testAbi";
 import { LendingAbi } from "@/constants/abis/LendingAbi";
 import { AAFactoryAbi } from "@/constants/abis/AAFactoryAbi";
 import { AccountAbi } from "@/constants/abis/AccountAbi";
-import { utils, Wallet } from "zksync-web3";
+import { EIP712Signer, types, utils, Wallet } from "zksync-web3";
 import { sign } from "crypto";
 
 
@@ -46,6 +46,7 @@ export default function Swap() {
   const [isOpen, setIsOpen] = useState(false);
   const { address, isConnected, isDisconnected } = useAccount();
 
+  const USDC_ADDRESS = "0x0faF6df7054946141266420b43783387A78d82A9"
   const LENDING_ADDRESS = "0xA7c9A38e77290420eD06cf54d27640dE27399eB1";
 
   const WETH_ADDRESS = "0x20b28B1e4665FFf290650586ad76E977EAb90c5D";
@@ -189,10 +190,10 @@ export default function Swap() {
 /____//___//_/   /____/\____/  /_/     /_/ |_|\___/ \___/ \____/ \____//_/|_/  /_/        /_/ |_|/_/ |_|      /_/  /_/ |_|\___/  /_/   \____//_/|_|  /_/  
 */
 
-const AA_FACTORY_ADDRESS = "0x7F6716F5dd12508692BCc5f27bC917995389EE1c";
+const AA_FACTORY_ADDRESS = "0xEb6D0610064b49d5868703892C3cf5A5AF10544E";
 const AA_ABI = AAFactoryAbi
 
-let aa_address: string;
+let aa_address;
 
 async function handleDeployAA () {
   const aaFactory = new ethers.Contract(AA_FACTORY_ADDRESS, AA_ABI, signer);
@@ -262,34 +263,75 @@ async function handleMulticall() {
   console.log(aa_address, "and" ,signer)
   const account = new ethers.Contract(aa_address, AccountAbi, signer);
 
-  let DAI_BALANCE = DAI.balanceOf(signer?.getAddress())
-  console.log("DAI Balance BEFORE of the user: ", DAI_BALANCE)
+  const usdcAmount = ethers.utils.parseUnits("100", 6);
 
-  const calls = [
-    {
-      to: Lender.address,
-      value: 0,
-      data: Lender.interface.encodeFunctionData("borrowEther", [usdcAmount])
-    },
-    {
-      to: WETH.address,
-      value:0,
-      data: WETH.interface.encodeFunctionData("approve", [ROUTER_ADDRESS, MAX_APPROVE])
-    },
-    {
-      to: Router.address,
-      value: value,
-      data: Router.interface.encodeFunctionData("swap", [paths, 0, Math.floor(Date.now() / 1000) + 60 * 10])
-    }
-  ]
+  const USDC = new ethers.Contract(USDC_ADDRESS, ercAbi, signer)
 
-  const response = await account.multicall(calls, {from: owner}); // send to account itself
+  let tx0 = await USDC.populateTransaction.approve(LENDING_ADDRESS, MAX_APPROVE);
+  tx0 = {
+    ...tx0,
+    from: aa_address,
+    to: USDC_ADDRESS,
+    chainId: 280,
+    nonce: await provider.getTransactionCount(aa_address),
+    customData: {
+      gasPerPubdata: utils.DEFAULT_GAS_PER_PUBDATA_LIMIT,
+    } as types.Eip712Meta,
+    value: ethers.BigNumber.from(100000),
+    data: USDC.interface.encodeFunctionData("approve", [LENDING_ADDRESS, MAX_APPROVE]),
+  }
+
+  tx0.gasPrice = await provider.getGasPrice()
+  tx0.gasLimit = await provider.estimateGas(tx0);
+
+  console.log("TX 0 is caltulating")
+
+  const signedTxHash0 = EIP712Signer.getSignedDigest(tx0);
+  const signature0 = ethers.utils.arrayify(ethers.utils.joinSignature(signer._signingKey().signDigest(signedTxHash0))); 
+
+  console.log("TX 0 CALCULATEFD!")
+  tx0.customData = {
+    ...tx0.customData,
+    customSignature: signature0,
+  };
+
+  let tx1 = await Lender.populateTransaction.borrowEther(usdcAmount);
+
+  tx1 = {
+    ...tx1,
+    from: aa_address,
+    to: Lender.address,
+    chainId: 280,
+    nonce: await provider.getTransactionCount(aa_address),
+    customData: {
+      gasPerPubdata: utils.DEFAULT_GAS_PER_PUBDATA_LIMIT,
+    } as types.Eip712Meta,
+    value: ethers.BigNumber.from(100000),
+    data: Lender.interface.encodeFunctionData("borrowEther", [usdcAmount]),
+  }
+
+  tx1.gasPrice = await provider.getGasPrice()
+  tx1.gasLimit = await provider.estimateGas(tx1);
+
+  console.log("Function data:", Lender.interface.encodeFunctionData("borrowEther", [usdcAmount]));
+
+  const signedTxHash = EIP712Signer.getSignedDigest(tx1);
+  const signature = ethers.utils.arrayify(ethers.utils.joinSignature(signer._signingKey().signDigest(signedTxHash)));
+
+  console.log("Calculeted tx1")
+
+  tx1.customData = {
+    ...tx1.customData,
+    customSignature: signature,
+  };
+
+  let calls: any = [utils.serialize(tx0), utils.serialize(tx1)]
+
+  console.log("Function data:", Lender.interface.encodeFunctionData("borrowEther", [usdcAmount]));
+  const response = await account.multicall(calls); // send to account itself
   const result = await response.wait();
 
   console.log("Multicall! HERE: ", result)
-
-  DAI_BALANCE = await DAI.balanceOf(signer?.getAddress())
-  console.log("DAI Balance AFTER of the user: ", DAI_BALANCE)
 
   const interfaceId = multicallInterface.getSighash("multicall");
   console.log(interfaceId)
@@ -344,8 +386,6 @@ async function handleMulticall() {
                   
                   USDC --&#62; ETH --&#62; WETH --&#62; DAI (One Click)
 
-                  USDC --&#62; ETH --&#62; WETH --&#62; APPROVE --&#62; DAI
-
                   <br />
                   <br />
                   <Button disabled={!write1} onClick={handleApprove}> Approve</Button>
@@ -353,11 +393,14 @@ async function handleMulticall() {
                   <Button onClick={() => write2?.()}> BORROW </Button>
                   <Button onClick={handleSwap}> SWAP </Button>
                   <br />
+                  <br />
                   <Button onClick={handleDeployAA}> DEPLOY YOUR ABSTRACT ACCOUNT!</Button>
+                  <br />
+                  <Button onClick={sendETHtoAA}>Send ETH Your Account</Button>
                   <br />
                   <Button onClick={handleMulticall}> MULTICALL FUCK YEAH! </Button>
                   <br />
-                  <Button onClick={sendETHtoAA}>Send ETH Your Account</Button>
+                  <br />
 
                   {isLoading1 && <div>Check Wallet</div>}
                   {isSuccess1 && <div>Transaction: {JSON.stringify(data1)}</div>}
