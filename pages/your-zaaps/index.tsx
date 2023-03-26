@@ -277,7 +277,7 @@ async function handleMulticall() {
     customData: {
       gasPerPubdata: utils.DEFAULT_GAS_PER_PUBDATA_LIMIT,
     } as types.Eip712Meta,
-    value: ethers.BigNumber.from(100000),
+    value: ethers.utils.parseEther("0"),
     data: USDC.interface.encodeFunctionData("approve", [LENDING_ADDRESS, MAX_APPROVE]),
   }
 
@@ -306,7 +306,7 @@ async function handleMulticall() {
     customData: {
       gasPerPubdata: utils.DEFAULT_GAS_PER_PUBDATA_LIMIT,
     } as types.Eip712Meta,
-    value: ethers.BigNumber.from(100000),
+    value: ethers.utils.parseEther("0"),
     data: Lender.interface.encodeFunctionData("borrowEther", [usdcAmount]),
   }
 
